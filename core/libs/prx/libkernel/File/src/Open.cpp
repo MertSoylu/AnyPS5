@@ -4,6 +4,7 @@
 #include "prx/libc/include/GuestArena.hpp"
 #include "prx/libkernel/File/include/File.hpp"
 #include "prx/libkernel/File/include/DirectoryDescriptor.hpp"
+#include "prx/libkernel/File/include/DescriptorFlags.hpp"
 #include "prx/libkernel/KernelErrors.hpp"
 #include "SceTypes.hpp"
 
@@ -116,12 +117,14 @@ int APS5_VABI sceKernelOpen(const char* path, int flags, std::uint16_t mode) {
     if (fd < 0) {
         return SceErrorFromErrno(errno);
     }
+    File::RecordDescriptorFlags(fd, flags);
     if ((flags & SCE_KERNEL_O_ACCMODE) != SCE_KERNEL_O_RDONLY || (flags & (SCE_KERNEL_O_CREAT | SCE_KERNEL_O_TRUNC)))
         RecordWrittenPath_nid_no_patch(native);
     return fd;
 }
 
 int APS5_VABI sceKernelClose(int d) {
+    File::ForgetDescriptorFlags(d);
 #ifdef _WIN32
     File::ForgetDirectoryDescriptor(d);
 #endif
@@ -192,11 +195,6 @@ int APS5_VABI sceKernelUnlink(const char* path) {
         return SceErrorFromErrno(errno);
     }
     RecordWrittenPath_nid_no_patch(native);
-    return 0;
-}
-
-int APS5_VABI sceKernelFcntl() {
-    NotImplemented_nid_no_patch(__func__);
     return 0;
 }
 

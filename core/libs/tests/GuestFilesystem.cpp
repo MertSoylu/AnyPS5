@@ -33,6 +33,10 @@ int APS5_VABI rmdir_nid_postfix(const char*);
 int APS5_VABI mkdir_nid_postfix(const char*, unsigned short);
 int APS5_VABI sceKernelOpen(const char*, int, unsigned short);
 int APS5_VABI sceKernelClose(int);
+int APS5_VABI sceKernelFcntl(int, int, ...);
+int APS5_VABI fcntl_nid_postfix(int, int, ...);
+long long APS5_VABI sceKernelWrite(int, const void*, std::size_t);
+long long APS5_VABI sceKernelLseek(int, long long, int);
 int APS5_VABI sceKernelStat(const char*, FileStat*);
 int APS5_VABI sceKernelUnlink(const char*);
 int APS5_VABI sceKernelRmdir(const char*);
@@ -179,6 +183,33 @@ int main() {
     Require(opened >= 0 && close_nid_postfix(opened) == 0);
     const int reopened = _open_nid_postfix(presentName.c_str(), 0);
     Require(reopened >= 0 && close_nid_postfix(reopened) == 0);
+    const int controlled = sceKernelOpen(presentName.c_str(), 0x2 | 0x4, 0);
+    Require(controlled >= 0);
+    Require(sceKernelFcntl(controlled, 3) == 0x6);
+    Require(sceKernelFcntl(controlled, 1) == 0);
+    Require(sceKernelFcntl(controlled, 2, 0x3) == 0 && sceKernelFcntl(controlled, 1) == 1);
+    Require(sceKernelFcntl(controlled, 4, 0x200) == 0 && sceKernelFcntl(controlled, 3) == 0x2);
+    Require(fcntl_nid_postfix(controlled, 4, 0x4) == 0 && fcntl_nid_postfix(controlled, 3) == 0x6);
+#ifndef _WIN32
+    Require(sceKernelLseek(controlled, 0, 0) == 0);
+    Require(sceKernelFcntl(controlled, 4, 0x8) == 0 && sceKernelFcntl(controlled, 3) == 0xa);
+    Require(sceKernelWrite(controlled, "!", 1) == 1);
+#endif
+    Require(close_nid_postfix(controlled) == 0);
+    Require(sceKernelFcntl(controlled, 3) == static_cast<int>(0x80020009u));
+    Require(fcntl_nid_postfix(controlled, 1) == -1 && *__error_nid_postfix() == 9);
+    Require(sceKernelFcntl(-1, 3) == static_cast<int>(0x80020009u));
+#ifndef _WIN32
+    { std::ifstream stream(present); std::string contents; std::getline(stream, contents);
+      Require(contents == "posix!"); }
+#endif
+    const int fcntlSocket = socket_nid_postfix(2, 2, 0);
+    Require(fcntlSocket >= 0);
+    Require(sceKernelFcntl(fcntlSocket, 4, 0x4) == 0 && sceKernelFcntl(fcntlSocket, 3) == 0x6);
+    Require(fcntl_nid_postfix(fcntlSocket, 4, 0) == 0 && fcntl_nid_postfix(fcntlSocket, 3) == 0x2);
+    Require(sceKernelFcntl(fcntlSocket, 1) == static_cast<int>(0x80020016u));
+    Require(close_nid_postfix(fcntlSocket) == 0);
+    Require(sceKernelFcntl(fcntlSocket, 3) == static_cast<int>(0x80020009u));
     Require(open_nid_postfix(missingName.c_str(), 0, 0) == -1 && *__error_nid_postfix() == 2);
     Require(_open_nid_postfix(missingName.c_str(), 0) == -1 && *__error_nid_postfix() == 2);
     Require(sceKernelOpen(missingName.c_str(), 0, 0) == static_cast<int>(0x80020002u));

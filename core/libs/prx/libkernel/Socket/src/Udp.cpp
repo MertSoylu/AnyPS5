@@ -309,24 +309,12 @@ int UnnamedAddress(void* address, std::uint32_t* length) {
 }
 }
 
-extern "C" {
-int APS5_VABI fcntl_nid_postfix(int descriptor, int command, ...) {
+int GuestSockets::Fcntl(int descriptor, int command, int flags) {
     const auto socket = Lookup(descriptor);
     if (!socket) return -1;
     std::lock_guard lock(socket->modeMutex);
     if (command == 3) return 2 | (socket->nonblocking ? 4 : 0); // F_GETFL, O_RDWR
     if (command != 4) return Fail(22);
-#ifdef _WIN32
-    __builtin_sysv_va_list arguments;
-    __builtin_sysv_va_start(arguments, command);
-    const int flags = __builtin_va_arg(arguments, int);
-    __builtin_sysv_va_end(arguments);
-#else
-    std::va_list arguments;
-    va_start(arguments, command);
-    const int flags = va_arg(arguments, int);
-    va_end(arguments);
-#endif
     if ((flags & ~7) != 0) return Fail(45);
 #ifdef _WIN32
     unsigned long enabled = (flags & 4) != 0;
@@ -338,6 +326,8 @@ int APS5_VABI fcntl_nid_postfix(int descriptor, int command, ...) {
     socket->nonblocking = enabled != 0;
     return 0;
 }
+
+extern "C" {
 int APS5_VABI setsockopt_nid_postfix(int descriptor, int level, int option,
                                     const void* value, std::uint32_t length) {
     const auto socket = Lookup(descriptor);
